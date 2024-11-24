@@ -8,19 +8,20 @@ package com.mycompany.santosuruh;
  *
  * @author DedSec
  */
-public class Service {
-    private String name;
-    private double price;
+public abstract class Service {
+    protected String name;
+    protected double price;
     
-    public Service(String name, double price) {
+    // Tambahkan constructor
+    protected Service(String name, double price) {
         this.name = name;
         this.price = price;
     }
-    
+
     public String getName() {
         return name;
     }
-    
+
     public double getPrice() {
         return price;
     }

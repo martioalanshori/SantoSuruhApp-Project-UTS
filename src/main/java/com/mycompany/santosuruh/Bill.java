@@ -2,67 +2,83 @@ package com.mycompany.santosuruh;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 public class Bill {
-    private static int lastBillNumber = 0;
-    private String billNumber;
-    private LocalDateTime timestamp;
-    private Service service;
-    private double totalPrice;
-    private String additionalInfo;
+    private final Service service;
+    private final double totalPrice;
+    private final String additionalInfo;
     private Payment payment;
-    private double change; // Menyimpan kembalian
-    
+    private double change;
+    private int quantity;
+    private final String transactionId;
+    private final LocalDateTime timestamp;
+
     public Bill(Service service, double totalPrice, String additionalInfo) {
-        this.billNumber = generateBillNumber();
-        this.timestamp = LocalDateTime.now();
         this.service = service;
         this.totalPrice = totalPrice;
         this.additionalInfo = additionalInfo;
+        this.transactionId = generateTransactionId();
+        this.timestamp = LocalDateTime.now();
     }
-    
-    private String generateBillNumber() {
-        lastBillNumber++;
-        return String.format("SS%05d", lastBillNumber);
+
+    private String generateTransactionId() {
+        // Generate short unique ID (last 8 characters of UUID)
+        return UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
-    
-    public void setPayment(Payment payment, double change) { // Menyimpan pembayaran dan kembalian
+
+    public void setPayment(Payment payment, double change) {
         this.payment = payment;
         this.change = change;
     }
-    
+
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
+
     public String printBill() {
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
+        if (payment == null) return null;
+
         StringBuilder bill = new StringBuilder();
+        String line = "============================================\n";
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+        // Header
+        bill.append(line);
+        bill.append("                STRUK PEMBAYARAN                 \n");
+        bill.append("         SANTO SURUH LAYANAN JASA TERPERCAYA        \n");
+        bill.append(line);
         
-        bill.append("\n=============================================\n");
-        bill.append("            STRUK SANTO SURUH              \n");
-        bill.append("=============================================\n");
-        bill.append("No. Struk   : ").append(billNumber).append("\n");
-        bill.append("Tanggal     : ").append(timestamp.format(dateFormatter)).append("\n");
-        bill.append("---------------------------------------------\n");
-        bill.append("Layanan     : ").append(service.getName()).append("\n");
-        bill.append("Harga Dasar : Rp. ").append(String.format("%,.0f", service.getPrice())).append("\n");
-        bill.append("Detail      : ").append(additionalInfo).append("\n");
-        bill.append("---------------------------------------------\n");
-        bill.append("Total Bayar : Rp. ").append(String.format("%,.0f", totalPrice)).append("\n");
+        // Transaction details
+        bill.append(String.format("No. Transaksi : %s\n", transactionId));
+        bill.append(String.format("Tanggal       : %s\n", timestamp.format(dateFormatter)));
+        bill.append(String.format("Waktu         : %s\n", timestamp.format(timeFormatter)));
+        bill.append(String.format("Kasir         : %s\n", Session.getCurrentUser()));
+        bill.append(line);
         
-        if (payment != null) {
-            bill.append("Metode Bayar: ").append(payment.getMethod().getDisplayName()).append("\n");
-            if (payment.getMethod() == Payment.PaymentMethod.QRIS) {
-                bill.append("No. Ref     : ").append(payment.getReferenceNumber()).append("\n");
-            }
-            if (payment.getMethod() == Payment.PaymentMethod.CASH && payment.isPaid()) {
-                bill.append("Tunai       : Rp. ").append(String.format("%,.0f", payment.getAmountPaid())).append("\n");
-                bill.append("Kembalian   : Rp. ").append(String.format("%,.0f", change)).append("\n"); // Tampilkan kembalian
-            }
-            bill.append("Status      : ").append(payment.isPaid() ? "LUNAS" : "BELUM LUNAS").append("\n");
+        // Service details
+        bill.append("DETAIL LAYANAN:\n");
+        bill.append(String.format("%-20s : %s\n", "Nama Layanan", service.getName()));
+        if (additionalInfo != null && !additionalInfo.trim().isEmpty()) {
+            bill.append(String.format("%-20s : %s\n", "Keterangan", additionalInfo));
         }
+        bill.append(String.format("%-20s : %d\n", "Jumlah", quantity));
+        bill.append(String.format("%-20s : Rp. %,d\n", "Harga per Layanan", (int)service.getPrice()));
+        bill.append(line);
         
-        bill.append("=============================================\n");
-        bill.append("          Terima Kasih atas Pesanan         \n");
-        bill.append("        Semoga Anda Puas dengan Layanan     \n");
-        bill.append("=============================================\n");
+        // Payment details
+        bill.append("PEMBAYARAN:\n");
+        bill.append(String.format("%-20s : Rp. %,d\n", "Total", (int)totalPrice));
+        bill.append(String.format("%-20s : %s\n", "Metode Pembayaran", payment.getMethod().getDisplayName()));
+        bill.append(String.format("%-20s : Rp. %,d\n", "Dibayar", (int)payment.getAmount()));
+        bill.append(String.format("%-20s : Rp. %,d\n", "Kembalian", (int)change));
+        bill.append(line);
+        
+        // Footer
+        bill.append("          Terima Kasih Atas Kepercayaan    \n");
+        bill.append("                Anda Kepada Kami           \n");
+        bill.append("============================================\n");
         
         return bill.toString();
     }
